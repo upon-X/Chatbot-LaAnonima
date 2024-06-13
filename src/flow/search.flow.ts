@@ -7,103 +7,99 @@ export const searchFlow = addKeyword<MemoryDB>([
   "búsqueda",
 ])
   .addAnswer(`¿Qué desea buscar?`)
-  .addAction(
-    { capture: true },
-    async (ctx, { state, flowDynamic }): Promise<void> => {
-      const originalText: string = ctx.body; // Texto original capturado
-      await flowDynamic(`Buscando...`);
-      // Reemplazar los espacios con %20 en el texto original
-      const modifiedOriginalText: string = originalText.replace(/ /g, "%20");
+  .addAction({ capture: true }, async (ctx, { flowDynamic }): Promise<void> => {
+    // Enviamos mensaje de que estamos procesando la busqueda
+    await flowDynamic(`Buscando...`);
+    const requestText: string = ctx.body;
+    const url: string = `https://diaonline.supermercadosdia.com.ar/${requestText}?_q=${requestText}&map=ft`;
 
-      // Reemplazar los espacios con %20 en el texto modificado
-      const modifiedText: string = originalText
-        .toLowerCase()
-        .replace(/ /g, "%20");
+    // await state.update({ name: ctx.body, url: url });
 
-      // Reemplazar la palabra en la URL con el texto modificado, manteniendo la capitalización original
-      const url: string = `https://diaonline.supermercadosdia.com.ar/${modifiedText}?_q=${modifiedOriginalText}&map=ft`;
+    let browser: Browser | undefined;
 
-      await state.update({ name: ctx.body, url: url });
+    try {
+      browser = await chromium.launch();
+      const page = await browser.newPage();
 
-      let browser: Browser | undefined;
+      await page.goto(url);
 
-      try {
-        browser = await chromium.launch();
-        const page = await browser.newPage();
+      // Verificamos que no nos haya arrojado un NotFound
+      await Promise.race([
+        page.waitForSelector(".vtex-search-result-3-x-notFound--layout", {
+          timeout: 3000,
+        }),
+      ]);
+      const notFound = await page.$(".vtex-search-result-3-x-notFound--layout");
 
-        await page.goto(url);
+      // Si lo hay, enviamos mensaje de que no se encontro el producto
+      if (notFound) {
+        await flowDynamic(
+          "😭 No encontramos lo que buscabas. Recuerda, tenemos solo produtos del supermercado Dia"
+        );
+      } else {
+        // Wait for these product´s classNames to load
+        // Name
+        await page.waitForSelector(
+          ".vtex-product-summary-2-x-productBrand.vtex-product-summary-2-x-brandName.t-body"
+        );
+        // Price
+        await page.waitForSelector(".vtex-product-price-1-x-currencyContainer");
+        // Image
+        await page.waitForSelector(
+          ".vtex-product-summary-2-x-imageNormal.vtex-product-summary-2-x-image"
+        );
+        // Brand Name
+        await page.waitForSelector("vtex-product-summary-2-x-productBrandName");
 
-        // Esperar un máximo de 5 segundos antes de continuar si el elemento "Not Found" no está presente
-        await Promise.race([
-          page.waitForSelector(".vtex-search-result-3-x-notFound--layout", {
-            timeout: 4000,
-          }),
-          page.waitForTimeout(0), // Espera mínima de 0 segundos
-        ]);
-
-        // Verificar si se encuentra la página "Not Found"
-        const notFound = await page.$(
-          ".vtex-search-result-3-x-notFound--layout"
+        // Search by classNames the elements of the product
+        const productNameElement = await page.$$(
+          ".vtex-product-summary-2-x-productBrand.vtex-product-summary-2-x-brandName.t-body"
+        );
+        const productPriceElement = await page.$$(
+          ".vtex-product-summary-2-x-currencyContainer"
+        ); // Contenedor del producto
+        const productImageElement = await page.$$(
+          ".vtex-product-summary-2-x-imageNormal.vtex-product-summary-2-x-image"
+        );
+        const productBrandElement = await page.$$(
+          "vtex-product-summary-2-x-productBrandName"
         );
 
-        if (notFound) {
-          await flowDynamic("😭 No encontramos lo que buscabas.");
-        } else {
-          // Esperar a que se carguen los productos, establecer un tiempo de espera adecuado según la velocidad de carga de la página
-          await page.waitForSelector(
-            ".vtex-product-summary-2-x-productBrand.vtex-product-summary-2-x-brandName.t-body"
-          );
-          await page.waitForSelector(
-            ".vtex-product-price-1-x-currencyContainer"
-          );
-          await page.waitForSelector(
-            ".vtex-product-summary-2-x-imageNormal.vtex-product-summary-2-x-image"
-          );
+        // Limitar el número de productos a los primeros tres
+        const productCount = Math.min(3, productNameElement.length);
 
-          // Buscar los elementos que representan los productos
-          const productBrandElements = await page.$$(
-            ".vtex-product-summary-2-x-productBrand.vtex-product-summary-2-x-brandName.t-body"
+        // Recolectar la información de cada producto (solo los primeros tres)
+
+        for (let i = 0; i < productCount; i++) {
+          const productName: string = await productNameElement[i].textContent();
+          const productPrice: string = await productPriceElement[i].$eval(
+            ".vtex-product-price-1-x-currencyContainer",
+            (element) => element.textContent
           );
-          const productElements = await page.$$(
-            ".vtex-product-summary-2-x-container"
-          ); // Contenedor del producto
-          const productImageElements = await page.$$(
-            ".vtex-product-summary-2-x-imageNormal.vtex-product-summary-2-x-image"
-          );
-
-          // Limitar el número de productos a los primeros tres
-          const productCount = Math.min(3, productBrandElements.length);
-
-          // Recolectar la información de cada producto (solo los primeros tres)
-
-          for (let i = 0; i < productCount; i++) {
-            const productName: string = await productBrandElements[
-              i
-            ].textContent();
-            const productPrice: string = await productElements[i].$eval(
-              ".vtex-product-price-1-x-currencyContainer",
-              (element) => element.textContent
-            );
-            const productImageUrl: string | null = await productImageElements[
-              i
-            ].getAttribute("src");
-            if (productImageUrl) {
-              await flowDynamic([
-                {
-                  body: `*${productName.trim()}*\nPrecio: ${productPrice.trim()}`,
-                  media: productImageUrl,
-                },
-              ]);
-            }
+          const productBrand: string = await productBrandElement[
+            i
+          ].textContent();
+          const productImageUrl: string | null = await productImageElement[
+            i
+          ].getAttribute("src");
+          if (productImageUrl) {
+            await flowDynamic([
+              {
+                body: `*${productName.trim()}*\n${productBrand.trim()}\nPrecio: ${productPrice.trim()}`,
+                media: productImageUrl,
+              },
+            ]);
           }
         }
-      } catch (error) {
-        console.error("Ocurrió un error:", error);
-        await flowDynamic(error);
-      } finally {
-        if (browser) {
-          await browser.close();
-        }
+      }
+    } catch (error) {
+      console.error("Ocurrió un error:", error);
+      await flowDynamic(
+        "Ocurrio un error en tu busqueda, recuerda que tenemos solo productos del supermercado Dia"
+      );
+    } finally {
+      if (browser) {
+        await browser.close();
       }
     }
-  );
+  });
