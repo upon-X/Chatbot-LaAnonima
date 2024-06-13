@@ -11,7 +11,8 @@ interface Product {
 }
 
 export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
-  .addAnswer(`Hola, bienvenido al *Chatbot* del Supermercado Dia.`)
+  // export const mainFlow = addKeyword<MemoryDB>(EVENTS.WELCOME)
+  .addAnswer(`👋 Hola, bienvenido al *Chatbot* del Supermercado Dia.`)
   .addAnswer(" ¿Qué producto deseas buscar?")
   .addAction({ capture: true }, async (ctx, { flowDynamic }): Promise<void> => {
     // Enviamos mensaje de que estamos procesando la busqueda
@@ -40,7 +41,7 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
       // Si lo hay, enviamos mensaje de que no se encontro el producto
       if (notFound) {
         await flowDynamic(
-          "😭 No encontramos lo que buscabas. Recuerda, tenemos solo produtos del supermercado Dia"
+          "😭 Lo sentimos, dicho producto no se encuentra disponible."
         );
       } else {
         // Esperamos a la aparicion de cada elemento
