@@ -1,5 +1,7 @@
-import { addKeyword, MemoryDB, EVENTS } from "@builderbot/bot";
-console.log(EVENTS.WELCOME);
-export const welcomeFlow = addKeyword<MemoryDB>(EVENTS.WELCOME).addAnswer(
-  `🙌 Hola, bienvenido al *Chatbot* de comparador de precios. `
-);
+import { addKeyword, MemoryDB } from "@builderbot/bot";
+
+export const welcomeFlow = addKeyword<MemoryDB>([
+  "hello",
+  "hi",
+  "hola",
+]).addAnswer(`🙌 Hola, bienvenido al *Chatbot* de comparador de precios. `);
