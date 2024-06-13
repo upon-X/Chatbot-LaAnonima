@@ -1,7 +1,11 @@
 import { addKeyword, MemoryDB } from "@builderbot/bot";
 import { chromium, Browser } from "playwright";
 
-export const searchFlow = addKeyword<MemoryDB>(["busqueda"])
+export const searchFlow = addKeyword<MemoryDB>([
+  "busqueda",
+  "buscar",
+  "búsqueda",
+])
   .addAnswer(`¿Qué desea buscar?`)
   .addAction(
     { capture: true },
