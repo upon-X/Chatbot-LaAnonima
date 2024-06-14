@@ -8,6 +8,7 @@ interface Product {
   price: string;
   pricePerUnit: number;
   imageUrl: string | null;
+  magnitude: string;
 }
 
 export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
@@ -61,6 +62,10 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
         );
         // Precio por unidad
         await page.waitForSelector("[data-specification-name='PrecioPorUnd']");
+        // Unidad de medida
+        await page.waitForSelector(
+          "[data-specification-name='UnidaddeMedida']"
+        );
 
         // Obtenemos cada elemento
         const productNameElements = await page.$$(
@@ -77,6 +82,9 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
         );
         const productPricePerUnitElements = await page.$$(
           "[data-specification-name='PrecioPorUnd']"
+        );
+        const productMagnitudeElements = await page.$$(
+          "[data-specification-name='UnidaddeMedida']"
         );
 
         // Limitar el número de productos a los primeros tres
@@ -101,6 +109,9 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
           const productPricePerUnit: number = parseFloat(
             await productPricePerUnitElements[i].textContent()
           );
+          const productMagnitude: string = await productMagnitudeElements[
+            i
+          ].textContent();
 
           const product: Product = {
             name: productName.trim(),
@@ -108,19 +119,18 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
             price: productPrice.trim(),
             pricePerUnit: productPricePerUnit,
             imageUrl: productImageUrl,
+            magnitude: productMagnitude,
           };
 
           products.push(product);
 
-          if (productImageUrl) {
-            // Enviamos mensajes con la correcta info de cada producto
-            await flowDynamic([
-              {
-                body: `*${productName.trim()}*\n${productBrand.trim()}\nPrecio: ${productPrice.trim()}`,
-                media: productImageUrl,
-              },
-            ]);
-          }
+          // Enviamos mensajes con la correcta info de cada producto
+          await flowDynamic([
+            {
+              body: `*${productName.trim()}*\n${productBrand.trim()}\nPrecio: ${productPrice.trim()}`,
+              media: productImageUrl,
+            },
+          ]);
         }
 
         // Encuentra y guarda el producto con el menor precio por unidad
@@ -135,7 +145,7 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
           });
         // Enviamos mensaje recomendando el producto mejor costo/beneficio (peso|cantidad|capacidad/precio)
         await flowDynamic(
-          `Te recomiendo el producto con el menor precio por unidad: *${lowestPriceProduct.name}* de ${lowestPriceProduct.brand}, a un precio de ${formattedPricePerUnit} por unidad.`
+          `Te recomiendo el producto con el menor precio por unidad: *${lowestPriceProduct.name}* de ${lowestPriceProduct.brand}, a un precio de ${formattedPricePerUnit} por ${lowestPriceProduct.magnitude}.`
         );
       }
     } catch (error) {
