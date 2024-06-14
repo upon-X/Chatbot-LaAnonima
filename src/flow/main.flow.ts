@@ -145,7 +145,7 @@ export const mainFlow = addKeyword<MemoryDB>(["hello", "hi", "hola"])
           });
         // Enviamos mensaje recomendando el producto mejor costo/beneficio (peso|cantidad|capacidad/precio)
         await flowDynamic(
-          `Te recomiendo el producto con el menor precio por unidad: *${lowestPriceProduct.name}* de ${lowestPriceProduct.brand}, a un precio de ${formattedPricePerUnit} por ${lowestPriceProduct.magnitude}.`
+          `Te recomiendo el producto con el menor precio por ${lowestPriceProduct.magnitude}: *${lowestPriceProduct.name}* de ${lowestPriceProduct.brand}, a un precio de ${formattedPricePerUnit} por ${lowestPriceProduct.magnitude}.`
         );
       }
     } catch (error) {
