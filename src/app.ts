@@ -6,6 +6,7 @@ import { database } from "./database";
 
 const PORT = process.env.PORT ?? 3008;
 
+//Welcome flow en app EVENT.WELCOME
 const main = async () => {
   const { httpServer } = await createBot({
     flow,
@@ -14,5 +15,4 @@ const main = async () => {
   });
   httpServer(+PORT);
 };
-
 main();
